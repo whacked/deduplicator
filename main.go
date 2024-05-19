@@ -36,7 +36,7 @@ func main() {
 			os.Exit(1)
 		}
 	} else if *refDirPath != "" {
-		refDirInfo, err = WalkDirectory(*refDirPath, *parallelism)
+		refDirInfo, err = WalkDirectory(*refDirPath, *parallelism, *targetDirPath == "")
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error walking reference directory: %v\n", err)
 			os.Exit(1)
@@ -50,7 +50,9 @@ func main() {
 	if *targetDirPath == "" && *targetYamlPath == "" {
 
 		if *refDirPath != "" {
-			err := writeDirectoryInfoToYAML(refDirInfo, os.Stdout)
+			// deletion candidate:
+			// if we always stream output to stdout, we can remove this block
+			// err := writeDirectoryInfoToYAML(refDirInfo, os.Stdout)
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "Error writing reference directory info to YAML: %v\n", err)
 				os.Exit(1)
@@ -60,7 +62,7 @@ func main() {
 			refFileMap := GetFileMapFromDirectoryInfo(refDirInfo, *exactPathMatch)
 
 			// validate reference directory against the yaml
-			currentRefDirInfo, err := WalkDirectory(refDirInfo.BaseDir, *parallelism)
+			currentRefDirInfo, err := WalkDirectory(refDirInfo.BaseDir, *parallelism, false)
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "Error walking reference directory: %v\n", err)
 				os.Exit(1)
@@ -89,7 +91,7 @@ func main() {
 			os.Exit(1)
 		}
 	} else if *targetDirPath != "" {
-		targetDirInfo, err = WalkDirectory(*targetDirPath, *parallelism)
+		targetDirInfo, err = WalkDirectory(*targetDirPath, *parallelism, true)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error walking target directory: %v\n", err)
 			os.Exit(1)

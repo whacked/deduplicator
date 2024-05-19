@@ -6,17 +6,20 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
+
+	"gopkg.in/yaml.v2"
 )
 
 type FileInfo struct {
-	Path string
-	Hash string
+	Path string `yaml:"path"`
+	Hash string `yaml:"hash"`
 }
 
 type DirectoryInfo struct {
-	BaseDir string
-	Files   []FileInfo
+	BaseDir string     `yaml:"baseDir"`
+	Files   []FileInfo `yaml:"files"`
 }
 
 func (f *FileInfo) CalculateHash() error {
@@ -34,12 +37,16 @@ func (f *FileInfo) CalculateHash() error {
 	return nil
 }
 
-func WalkDirectory(root string, parallelism int) (*DirectoryInfo, error) {
+func WalkDirectory(root string, parallelism int, outputYamlToStdout bool) (*DirectoryInfo, error) {
 	var files []FileInfo
 	fileChan := make(chan FileInfo)
 	errChan := make(chan error, 1)
 	var wg sync.WaitGroup
 	var mu sync.Mutex
+
+	if outputYamlToStdout {
+		fmt.Printf("baseDir: %s\nfiles:\n", root)
+	}
 
 	// Start worker goroutines
 	for i := 0; i < parallelism; i++ {
@@ -57,6 +64,25 @@ func WalkDirectory(root string, parallelism int) (*DirectoryInfo, error) {
 				mu.Lock()
 				files = append(files, fileInfo)
 				mu.Unlock()
+				if outputYamlToStdout {
+					data, err := yaml.Marshal(&fileInfo)
+					if err != nil {
+						errChan <- err
+						return
+					}
+					dataLines := strings.Split(string(data), "\n")
+					for i, dataLine := range dataLines {
+						if dataLine == "" {
+							continue // Skip empty lines
+						}
+						if i == 0 {
+							fmt.Printf("- %s\n", dataLine)
+						} else {
+							fmt.Printf("  %s\n", dataLine)
+						}
+					}
+				}
+
 			}
 		}()
 	}
@@ -94,7 +120,6 @@ func WalkDirectory(root string, parallelism int) (*DirectoryInfo, error) {
 
 	return &DirectoryInfo{BaseDir: root, Files: files}, nil
 }
-
 func GetFileMapFromDirectoryInfo(dirInfo *DirectoryInfo, exactPathMatch bool) map[string]map[string]bool {
 	refFileMap := make(map[string]map[string]bool) // map[hash]map[relpath]bool
 	for _, file := range dirInfo.Files {

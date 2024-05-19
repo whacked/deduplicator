@@ -104,7 +104,7 @@ func TestWalkDirectory(t *testing.T) {
 	}
 	defer removeTestFiles(testDir)
 
-	dirInfo, err := WalkDirectory(testDir, 1)
+	dirInfo, err := WalkDirectory(testDir, 1, false)
 	if err != nil {
 		t.Fatalf("Error walking directory: %v", err)
 	}
@@ -137,12 +137,12 @@ func TestCompareFiles(t *testing.T) {
 	defer removeTestFiles(refDirExact)
 	defer removeTestFiles(targetDirExact)
 
-	refDirInfoExact, err := WalkDirectory(refDirExact, 1)
+	refDirInfoExact, err := WalkDirectory(refDirExact, 1, false)
 	if err != nil {
 		t.Fatalf("Error walking reference directory (exact): %v", err)
 	}
 
-	targetDirInfoExact, err := WalkDirectory(targetDirExact, 2)
+	targetDirInfoExact, err := WalkDirectory(targetDirExact, 2, false)
 	if err != nil {
 		t.Fatalf("Error walking target directory (exact): %v", err)
 	}
@@ -177,12 +177,12 @@ func TestCompareFiles(t *testing.T) {
 	defer removeTestFiles(refDirNonExact)
 	defer removeTestFiles(targetDirNonExact)
 
-	refDirInfoNonExact, err := WalkDirectory(refDirNonExact, 1)
+	refDirInfoNonExact, err := WalkDirectory(refDirNonExact, 1, false)
 	if err != nil {
 		t.Fatalf("Error walking reference directory (non-exact): %v", err)
 	}
 
-	targetDirInfoNonExact, err := WalkDirectory(targetDirNonExact, 2)
+	targetDirInfoNonExact, err := WalkDirectory(targetDirNonExact, 2, false)
 	if err != nil {
 		t.Fatalf("Error walking target directory (non-exact): %v", err)
 	}
