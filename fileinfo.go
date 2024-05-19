@@ -95,13 +95,11 @@ func WalkDirectory(root string, parallelism int) (*DirectoryInfo, error) {
 	return &DirectoryInfo{BaseDir: root, Files: files}, nil
 }
 
-// CompareFiles compares files from two directories based on hash and relative path
-// If exactPathMatch is true, it requires files to have the exact same relative path
-func CompareFiles(refDir *DirectoryInfo, targetDir *DirectoryInfo, exactPathMatch bool) []FileInfo {
+func GetFileMapFromDirectoryInfo(dirInfo *DirectoryInfo, exactPathMatch bool) map[string]map[string]bool {
 	refFileMap := make(map[string]map[string]bool) // map[hash]map[relpath]bool
-	for _, file := range refDir.Files {
+	for _, file := range dirInfo.Files {
 		hash := file.Hash
-		relPath, _ := filepath.Rel(refDir.BaseDir, file.Path)
+		relPath, _ := filepath.Rel(dirInfo.BaseDir, file.Path)
 
 		if _, exists := refFileMap[hash]; !exists {
 			refFileMap[hash] = make(map[string]bool)
@@ -114,6 +112,13 @@ func CompareFiles(refDir *DirectoryInfo, targetDir *DirectoryInfo, exactPathMatc
 			refFileMap[hash][fileName] = true
 		}
 	}
+	return refFileMap
+}
+
+// CompareFiles compares files from two directories based on hash and relative path
+// If exactPathMatch is true, it requires files to have the exact same relative path
+func CompareFiles(refDir *DirectoryInfo, targetDir *DirectoryInfo, exactPathMatch bool) []FileInfo {
+	refFileMap := GetFileMapFromDirectoryInfo(refDir, exactPathMatch)
 
 	var duplicates []FileInfo
 	for _, file := range targetDir.Files {
