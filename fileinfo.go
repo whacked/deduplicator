@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"sync"
 )
 
 type FileInfo struct {
@@ -33,24 +34,65 @@ func (f *FileInfo) CalculateHash() error {
 	return nil
 }
 
-func WalkDirectory(root string) (*DirectoryInfo, error) {
+func WalkDirectory(root string, parallelism int) (*DirectoryInfo, error) {
 	var files []FileInfo
+	fileChan := make(chan FileInfo)
+	errChan := make(chan error, 1)
+	var wg sync.WaitGroup
+	var mu sync.Mutex
 
-	err := filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			return err
-		}
-		if !info.IsDir() {
-			fileInfo := FileInfo{Path: path}
-			if err := fileInfo.CalculateHash(); err != nil {
+	// Start worker goroutines
+	for i := 0; i < parallelism; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for fileInfo := range fileChan {
+				if err := fileInfo.CalculateHash(); err != nil {
+					select {
+					case errChan <- err:
+					default:
+					}
+					return
+				}
+				mu.Lock()
+				files = append(files, fileInfo)
+				mu.Unlock()
+			}
+		}()
+	}
+
+	// Walk the directory and send files to be processed
+	go func() {
+		err := filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
+			if err != nil {
 				return err
 			}
-			files = append(files, fileInfo)
+			if !info.IsDir() {
+				fileChan <- FileInfo{Path: path}
+			}
+			return nil
+		})
+		close(fileChan)
+		if err != nil {
+			select {
+			case errChan <- err:
+			default:
+			}
 		}
-		return nil
-	})
+	}()
 
-	return &DirectoryInfo{BaseDir: root, Files: files}, err
+	// Wait for all workers to finish
+	wg.Wait()
+	close(errChan)
+
+	// Check for errors
+	for err := range errChan {
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return &DirectoryInfo{BaseDir: root, Files: files}, nil
 }
 
 // CompareFiles compares files from two directories based on hash and relative path
