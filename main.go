@@ -1,10 +1,12 @@
 package main
 
 import (
+	"bufio"
 	"flag"
 	"fmt"
 	"os"
 	"runtime"
+	"strings"
 
 	"gopkg.in/yaml.v2"
 )
@@ -99,10 +101,23 @@ func main() {
 
 	// Handle deletion flag
 	if *deleteFiles {
-		err = DeleteFiles(duplicates)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error deleting files: %v\n", err)
-			os.Exit(1)
+		fmt.Printf("A total of %d duplicate files found.\n", len(duplicates))
+		fmt.Print("Are you sure you want to delete the files? Type 'yes' to confirm: ")
+		reader := bufio.NewReader(os.Stdin)
+		input, _ := reader.ReadString('\n')
+		input = strings.TrimSpace(input)
+
+		if input == "yes" {
+			err = DeleteFiles(duplicates)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Error deleting files: %v\n", err)
+				os.Exit(1)
+			}
+		} else {
+			fmt.Println("File deletion aborted.")
+			for _, file := range duplicates {
+				fmt.Printf("rm \"%s\"\n", file.Path)
+			}
 		}
 	} else {
 		for _, file := range duplicates {
