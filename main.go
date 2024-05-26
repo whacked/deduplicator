@@ -117,14 +117,22 @@ func main() {
 			}
 		} else {
 			fmt.Println("File deletion aborted.")
-			for _, file := range duplicates {
-				fmt.Printf("rm \"%s\"\n", file.Path)
-			}
+			printDeletionPlan(duplicates, refDirInfo, targetDirInfo)
 		}
 	} else {
-		for _, file := range duplicates {
-			fmt.Printf("rm \"%s\"\n", file.Path)
-		}
+		printDeletionPlan(duplicates, refDirInfo, targetDirInfo)
+	}
+}
+
+func printDeletionPlan(duplicates []FileInfo, refDir *DirectoryInfo, targetDir *DirectoryInfo) {
+	refFileMap := make(map[string]string)
+	for _, file := range refDir.Files {
+		refFileMap[file.Hash] = file.Path
+	}
+
+	for _, file := range duplicates {
+		refPath := refFileMap[file.Hash]
+		fmt.Printf("rm \"%s\"  # duplicated at: %s\n", file.Path, refPath)
 	}
 }
 
