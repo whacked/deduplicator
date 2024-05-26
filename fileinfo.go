@@ -70,19 +70,23 @@ func WalkDirectory(root string, parallelism int, outputYamlToStdout bool) (*Dire
 						errChan <- err
 						return
 					}
+					var output strings.Builder
 					dataLines := strings.Split(string(data), "\n")
 					for i, dataLine := range dataLines {
 						if dataLine == "" {
 							continue // Skip empty lines
 						}
 						if i == 0 {
-							fmt.Printf("- %s\n", dataLine)
+							output.WriteString(fmt.Sprintf("- %s\n", dataLine))
 						} else {
-							fmt.Printf("  %s\n", dataLine)
+							output.WriteString(fmt.Sprintf("  %s\n", dataLine))
 						}
 					}
+					// Print the formatted output string atomically
+					mu.Lock()
+					fmt.Print(output.String())
+					mu.Unlock()
 				}
-
 			}
 		}()
 	}
@@ -92,6 +96,10 @@ func WalkDirectory(root string, parallelism int, outputYamlToStdout bool) (*Dire
 		err := filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
 			if err != nil {
 				return err
+			}
+			// skip symlinks
+			if info.Mode()&os.ModeSymlink != 0 {
+				return nil
 			}
 			if !info.IsDir() {
 				fileChan <- FileInfo{Path: path}
